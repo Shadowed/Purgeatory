@@ -185,7 +185,7 @@ function Purgeatory:SendMessage(msg, spellID, spellName, usedSpellName, destName
 end
 
 function Purgeatory:Print(msg)
-	DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Purgeatory3|r: " .. msg)
+	DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Purgeatory|r: " .. msg)
 end
 
 -- Event handler
