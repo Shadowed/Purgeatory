@@ -5,9 +5,8 @@
 Purgeatory = {}
 
 local L = PurgeatoryLocals
-local instanceType, arenaBracket
-local summonedTotems = {}
-local summonedObjects = {}
+local instanceType
+local throttleTimers = {}
 
 function Purgeatory:OnInitialize()
 	self.defaults = {
@@ -54,12 +53,15 @@ function Purgeatory:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, sou
 	end
 	
 	local isHostile = bit.band(destFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) == COMBATLOG_OBJECT_REACTION_HOSTILE
---function Purgeatory:SendMessage(msg, spellID, spellName, usedSpellName, destName, dest, color)
 	
 	-- We got interrupted, or we interrupted someone else
 	if( eventType == "SPELL_INTERRUPT" and self.db.profile.zones[instanceType].interrupt ) then
 		local spellID, spellName, spellSchool, extraSpellID, extraSpellName, extraSpellSchool = ...
-		self:SendMessage(self.db.profile.interruptMsg, extraSpellID, extraSpellName, spellName, destName, self.db.profile.interruptLocation, self.db.profile.interruptColor)
+		
+		if( not throttleTimers[destGUID] or GetTime() < throttleTimers[destGUID] ) then
+			throttleTimers[destGUID] = GetTime() + 0.50
+			self:SendMessage(self.db.profile.interruptMsg, extraSpellID, extraSpellName, spellName, destName, self.db.profile.interruptLocation, self.db.profile.interruptColor)
+		end
 		
 	-- We tried to dispel a buff, and failed
 	elseif( eventType == "SPELL_DISPEL_FAILED" and self.db.profile.zones[instanceType].dispelFail and ( ( isHostile and self.db.profile.zones[instanceType].dispelOffensive ) or ( not isHostile and self.db.profile.zones[instanceType].dispelDefensive ) ) ) then
@@ -127,6 +129,9 @@ function Purgeatory:SendMessage(msg, spellID, spellName, usedSpellName, destName
 	-- We're grouped, in a raid and not leader or assist
 	elseif( dest == "rw" and not IsRaidLeader() and not IsRaidOfficer() and GetNumRaidMembers() > 0 ) then
 		dest = "party"
+	-- We're in a party but not a raid, switch to either chat frame #1 or party frames
+	elseif( dest == "raid" and GetNumRaidMembers() == 0 ) then
+		dest = GetNumPartyMembers() == 0 and 1 or "party"
 	end
 	
 	-- Do special things to the message
@@ -140,10 +145,13 @@ function Purgeatory:SendMessage(msg, spellID, spellName, usedSpellName, destName
 	-- Chat frame
 	if( tonumber(dest) ) then
 		chatFrames[dest] = chatFrames[dest] or _G["ChatFrame" .. dest] or DEFAULT_CHAT_FRAME
-		chatFrames[dest]:AddMessage(string.format("|cff33ff99Purgeatory|r|cffffffff:|r %s", self:WrapIcon(msg, spellID)), color.r, color.g, color.b)
+		chatFrames[dest]:AddMessage(self:WrapIcon(msg, spellID), color.r, color.g, color.b)
 	-- Raid warning announcement to raid/party
 	elseif( dest == "rw" ) then
 		SendChatMessage(msg, "RAID_WARNING")
+	-- Raid chat
+	elseif( dest == "raid" ) then
+		SendChatMessage(msg, "RAID")
 	-- Party chat
 	elseif( dest == "party" ) then
 		SendChatMessage(msg, "PARTY")
