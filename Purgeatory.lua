@@ -6,7 +6,6 @@ Purgeatory = {}
 
 local L = PurgeatoryLocals
 local instanceType
-local throttleTimers = {}
 
 function Purgeatory:OnInitialize()
 	self.defaults = {
@@ -57,11 +56,7 @@ function Purgeatory:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, sou
 	-- We got interrupted, or we interrupted someone else
 	if( eventType == "SPELL_INTERRUPT" and self.db.profile.zones[instanceType].interrupt ) then
 		local spellID, spellName, spellSchool, extraSpellID, extraSpellName, extraSpellSchool = ...
-		
-		if( not throttleTimers[destGUID] or GetTime() < throttleTimers[destGUID] ) then
-			throttleTimers[destGUID] = GetTime() + 0.50
-			self:SendMessage(self.db.profile.interruptMsg, extraSpellID, extraSpellName, spellName, destName, self.db.profile.interruptLocation, self.db.profile.interruptColor)
-		end
+		self:SendMessage(self.db.profile.interruptMsg, extraSpellID, extraSpellName, spellName, destName, self.db.profile.interruptLocation, self.db.profile.interruptColor)
 		
 	-- We tried to dispel a buff, and failed
 	elseif( eventType == "SPELL_DISPEL_FAILED" and self.db.profile.zones[instanceType].dispelFail and ( ( isHostile and self.db.profile.zones[instanceType].dispelOffensive ) or ( not isHostile and self.db.profile.zones[instanceType].dispelDefensive ) ) ) then
